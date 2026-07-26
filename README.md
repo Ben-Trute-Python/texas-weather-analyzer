@@ -2,7 +2,7 @@
 
 A targeted CLI weather application built in Python that fetches both **real-time 7-day forecasts** and **5-year historical winter archives** via the Open-Meteo API. 
 
-Designed specifically for horticultural planning, microclimate evaluation, and risk mitigation, this tool automates localized freeze/frost tracking to guide crop protection and agricultural site selection.
+Designed specif ically for horticultural planning, microclimate evaluation, and risk mitigation, this tool automates localized freeze/frost tracking to guide crop protection and agricultural site selection.
 
 ---
 
@@ -12,7 +12,7 @@ Commercial agricultural calculators and standard weather apps typically focus on
 
 1. **Short-Term Protection:** *Will temperature drop low enough tonight or this week that I need to cover frost-sensitive crops?*
 2. **Long-Term Feasibility & Labor Planning:** *If I buy land or relocate to a specific town, how many days per winter will I realistically spend covering plants or running freeze-protection equipment?*
-3. **Hardiness Threshold Tracking:** *For zone-marginal crops (e.g., Zone 9 perennials hardy to 20°F), how frequently did extreme sub-20°F freeze events actually occur over the past 5 winters?*
+3. **Hardiness Threshold Tracking:** *For zone-marginal crops (e.g., Zone 9 perennials hardy to 20°F), how frequently do freezes below 20°F actually occur over the past 5 winters?*
 
 This application solves these gaps by providing clear, categorized temperature-band metrics for both immediate decision-making and 5-year historical risk assessments across evaluated Texas regions.
 
