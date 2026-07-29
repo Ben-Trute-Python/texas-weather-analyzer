@@ -53,7 +53,7 @@ Ensure you have Python 3 installed along with the `requests` library:
 pip install requests
 ```
 
-##🚀 How to Run
+## 🚀 How to Run
 1. Clone the repository:
 
 ```bash
