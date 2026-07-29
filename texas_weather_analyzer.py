@@ -1,7 +1,8 @@
 import requests
 from config import TEXAS_CITIES
+import database
 
-def fetch_daily_lows(lat, lon, mode="forecast", start_date=None, end_date=None):
+def fetch_daily_lows(city_name, lat, lon, mode="forecast", start_date=None, end_date=None):
     """Fetches 7-day daily minimum temperatures in Fahrenheit."""
     if mode == "history":
         url = f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}&start_date={start_date}&end_date={end_date}&daily=temperature_2m_min&temperature_unit=fahrenheit&timezone=auto"
@@ -10,8 +11,10 @@ def fetch_daily_lows(lat, lon, mode="forecast", start_date=None, end_date=None):
     try:
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
-            return response.json().get("daily", {}).get("temperature_2m_min", [])
-        return []
+            temps = response.json().get("daily", {}).get("temperature_2m_min", [])
+            if temps:
+                database.save_weather_reading(city_name, lat, lon, temps[0])
+            return temps
     except requests.exceptions.RequestException as e:
         print(f"Network call failed: {e}")
         return []
@@ -56,7 +59,7 @@ def main():
         
         print(f"\n--- Historical 5-Winter Analysis for {city} (°F) ---")
         for w in winters:
-            temps = fetch_daily_lows(coords["lat"], coords["lon"], mode="history", start_date=w["start"], end_date=w["end"])
+            temps = fetch_daily_lows(city, coords["lat"], coords["lon"], mode="history", start_date=w["start"], end_date=w["end"])
             if temps:
                 results = analyze_chill_bands(temps)
                 print(f"Winter {w['label']}: {results['light_chill']} light chill (33-35°F) | {results['freezing']} freezing (<=32°F) | {results['hard_freeze']} hard freeze (<20°F)")
@@ -64,7 +67,7 @@ def main():
                 print(f"Winter {w['label']}: Failed to retrieve data")
     else:
         # Standard Forecast Mode
-        temps = fetch_daily_lows(coords["lat"], coords["lon"], mode="forecast")
+        temps = fetch_daily_lows(city, coords["lat"], coords["lon"], mode="forecast")
         if not temps:
             print("Could not retrieve forecast data.")
             return
