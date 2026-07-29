@@ -51,16 +51,21 @@ Ensure you have Python 3 installed along with the `requests` library:
 
 ```bash
 pip install requests
+```
 
-🚀 How to Run
+##🚀 How to Run
 1. Clone the repository:
 
+```bash
 git clone https://github.com/Ben-Trute-Python/texas-weather-analyzer.git
+```
 
 2. Run the pipeline: 
-
+```bash
 python texas_weather_analyzer.py
+```
 
 3. Inspect stored database records:
-
+```bash
 python -c "import database; print(database.get_all_readings()[:5])"
+```
