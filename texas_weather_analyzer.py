@@ -1,82 +1,64 @@
-import requests
-from config import TEXAS_CITIES
-import database
+import os
+import json
+from datetime import datetime, timezone
+from supabase import create_client, Client
 
-def fetch_daily_lows(city_name, lat, lon, mode="forecast", start_date=None, end_date=None):
-    """Fetches 7-day daily minimum temperatures in Fahrenheit."""
-    if mode == "history":
-        url = f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}&start_date={start_date}&end_date={end_date}&daily=temperature_2m_min&temperature_unit=fahrenheit&timezone=auto"
-    else:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_min&temperature_unit=fahrenheit&timezone=auto"
-    try:
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            temps = response.json().get("daily", {}).get("temperature_2m_min", [])
-            if temps:
-                database.save_weather_reading(city_name, lat, lon, temps[0])
-            return temps
-    except requests.exceptions.RequestException as e:
-        print(f"Network call failed: {e}")
-        return []
+# 1. Initialize Supabase Connection
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-def analyze_chill_bands(temps):
-    """Categorizes temperatures into specific chill thresholds (Fahrenheit)."""
-    light_chill = sum(1 for t in temps if 33 <= t < 36) # < 36 but above freezing
-    freezing = sum(1 for t in temps if t <= 32)         # <= 32
-    hard_freeze = sum(1 for t in temps if t < 20)      # < 20
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY environment variables!")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+BUCKET_NAME = "raw-weather-landing-zone"
+
+def get_latest_landing_file():
+    """Finds the most recent raw JSON payload in the landing zone bucket."""
+    files = supabase.storage.from_(BUCKET_NAME).list()
+    print(f"DEBUG: Supabase list output -> {files}")
+    json_files = [f for f in files if f['name'].endswith('.json')]
     
-    return {
-        "light_chill": light_chill,
-        "freezing": freezing,
-        "hard_freeze": hard_freeze
-    }
-
-def main():
-    print("=== Texas Winter Threshold Analyzer ===")
-    print("Available Cities:", ", ".join(TEXAS_CITIES.keys()))
+    if not json_files:
+        print("⚠️ No raw files found in landing zone.")
+        return None
     
-    city = input("Select a city: ").strip().title()
-    if city not in TEXAS_CITIES:
-        print("City not recognized.")
-        return
+    # Sort files by created_at timestamp to get the newest file
+    latest_file = max(json_files, key=lambda x: x.get('created_at', x['name']))
+    return latest_file['name']
 
-    coords = TEXAS_CITIES[city]
-
-    print("\nSelect Analysis Mode:", flush=True)
-    print("1. Upcoming 7-Day Forecast")
-    print("2. Historical Winter Analysis (Past 5 Winters)")
-    choice = input("Enter 1 or 2: ").strip()
-
-    if choice == "2":
-        # Historical Loop (Last 5 Winters)
-        winters = [
-            {"label": "2025-2026", "start": "2025-11-01", "end": "2026-03-31"},
-            {"label": "2024-2025", "start": "2024-11-01", "end": "2025-03-31"},
-            {"label": "2023-2024", "start": "2023-11-01", "end": "2024-03-31"},
-            {"label": "2022-2023", "start": "2022-11-01", "end": "2023-03-31"},
-            {"label": "2021-2022", "start": "2021-11-01", "end": "2022-03-31"},
-        ]
+def process_weather_payload(file_name):
+    """Downloads raw payload, extracts freeze thresholds, and transforms data."""
+    print(f"📥 Downloading {file_name} from Cloud Landing Zone...")
+    file_bytes = supabase.storage.from_(BUCKET_NAME).download(file_name)
+    raw_data = json.loads(file_bytes.decode('utf-8'))
+    
+    # Extract hourly metrics from Open-Meteo payload
+    hourly = raw_data.get("hourly", {})
+    times = hourly.get("time", [])
+    temps = hourly.get("temperature_2m", [])
+    
+    transformed_records = []
+    freeze_warning_count = 0
+    
+    for t, temp in zip(times, temps):
+        # Freeze condition check (below 32°F / 0°C depending on your units)
+        is_freeze = temp <= 0.0  # Open-Meteo defaults to Celsius
+        if is_freeze:
+            freeze_warning_count += 1
+            
+        transformed_records.append({
+            "timestamp": t,
+            "temperature": temp,
+            "freeze_warning": is_freeze
+        })
         
-        print(f"\n--- Historical 5-Winter Analysis for {city} (°F) ---")
-        for w in winters:
-            temps = fetch_daily_lows(city, coords["lat"], coords["lon"], mode="history", start_date=w["start"], end_date=w["end"])
-            if temps:
-                results = analyze_chill_bands(temps)
-                print(f"Winter {w['label']}: {results['light_chill']} light chill (33-35°F) | {results['freezing']} freezing (<=32°F) | {results['hard_freeze']} hard freeze (<20°F)")
-            else:
-                print(f"Winter {w['label']}: Failed to retrieve data")
-    else:
-        # Standard Forecast Mode
-        temps = fetch_daily_lows(city, coords["lat"], coords["lon"], mode="forecast")
-        if not temps:
-            print("Could not retrieve forecast data.")
-            return
-
-        results = analyze_chill_bands(temps)
-        print(f"\n--- 7-Day Low Temperature Forecast for {city} (°F) ---")
-        print(f"Days between 33°F and 35°F: {results['light_chill']}")
-        print(f"Days 32°F or below:       {results['freezing']}")
-        print(f"Days below 20")
+    print(f"✅ Processed {len(transformed_records)} hourly records.")
+    print(f"❄️ Total Freeze Warnings Detected: {freeze_warning_count}")
+    
+    return transformed_records
 
 if __name__ == "__main__":
-    main()
+    latest_file = get_latest_landing_file()
+    if latest_file:
+        data = process_weather_payload(latest_file)
