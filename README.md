@@ -1,71 +1,85 @@
-# Texas Weather & Freeze Threshold Analyzer 🌡️❄️
+# ⛅ Texas Weather Analyzer & Automated ETL Data Pipeline
 
-An end-to-end Python data pipeline that fetches real-time and historical weather data for 45+ agricultural regions, state parks, and coastal areas across Texas using the Open-Meteo REST API and persists structured readings into a SQLite database.
-
-Designed specifically for horticultural planning, microclimate evaluation, and risk mitigation, this tool automates localized freeze/frost tracking to guide crop protection and agricultural site selection.
+A hybrid Python data architecture featuring an **interactive command-line interface (CLI)** for on-demand historical weather analysis alongside an **automated cloud ETL (Extract, Transform, Load) pipeline** that ingests, cleans, and stores weather metrics directly in a PostgreSQL database with Row Level Security (RLS).
 
 ---
 
-## 💡 The Problem & Purpose
+## 🛠️ System Architecture
 
-Commercial agricultural calculators and standard weather apps typically focus on simple 7-day forecasts or broad USDA Hardiness Zones based on multi-decade averages. They often fail to answer critical, practical questions for growers working in marginal zones or high-risk microclimates:
+[ Open-Meteo API ]
+│
+├─► (On-Demand Queries) ──► Interactive CLI Tool (texas_weather_analyzer_v1_legacy.py)
+│
+└─► (Raw JSON Ingestion) ──► Supabase Storage Landing Zone (raw-weather-landing-zone)
+│
+▼
+Automated Cloud ETL Pipeline (texas_weather_analyzer.py)
+│
+▼
+Supabase PostgreSQL Database (daily_weather_metrics)
+---
 
-1. **Short-Term Protection:** *Will temperature drop low enough tonight or this week that I need to cover frost-sensitive crops?*
-2. **Long-Term Feasibility & Labor Planning:** *If I buy land or relocate to a specific town, how many days per winter will I realistically spend covering plants or running freeze-protection equipment?*
-3. **Hardiness Threshold Tracking:** *For zone-marginal crops (e.g., Zone 9 perennials hardy to 20°F), how frequently do freezes below 20°F actually occur over the past 5 winters?*
+## 🔑 Key Components
 
-This application solves these gaps by providing clear, categorized temperature-band metrics for both immediate decision-making and 5-year historical risk assessments across evaluated Texas regions.
+### 1. Automated Backend ETL Pipeline (`texas_weather_analyzer.py`)
+* **Extraction:** Ingests raw JSON payloads from the Supabase Cloud Storage landing zone.
+* **Transformation:** Cleans time-series data, computes daily minimum temperatures, and maps geographic coordinates dynamically across configured Texas municipalities.
+* **Loading:** Idempotently upserts metrics into PostgreSQL (`daily_weather_metrics`) using `(city_name, reading_date)` constraints to prevent duplicate entries.
+* **Database Automation:** Leverages database-level calculated columns (`is_light_chill`, `is_freezing`, `is_hard_freeze`) for real-time metric categorization upon insertion.
+
+### 2. Interactive Analysis CLI (`texas_weather_analyzer_v1_legacy.py`)
+* **On-Demand Comparisons:** Allows users to pick specific Texas cities and query real-time or historical forecast data.
+* **Threshold Flagging:** Detects frost and freeze conditions instantly for agricultural or infrastructure planning.
+ This is an end-to-end Python data pipeline that fetches real-time and hi
+  Designed specifically for horticultural planning, microclimate e
+ 
+---
+
+ ## 💡 The Problem & Purpose
+
+ Commercial agricultural calculators and standard weather apps ty
+
+ 1. **Short-Term Protection:** *Will temperature drop low enough
+ 2. **Long-Term Feasibility & Labor Planning:** *If I buy land or
+ 3. **Hardiness Threshold Tracking:** *For zone-marginal crops (e
+
+ This application solves these gaps by providing clear, categorized data.
 
 ---
 
-## 🏗️ Architecture & Features
+## 🗄️ Database Schema & Governance
 
-* **API Ingestion (Extract):** Leverages Python `requests` with defensive error handling (timeouts, status validation, fallback defaults) to pull meteorological data.
-* **SQL Persistence (Load):** Automated SQLite database module (`database.py`) that initializes schemas, prevents SQL injection using parameterized queries (`?`), and tracks automated timestamps for historical audit trails.
-* **Modular Software Architecture:** Centralized location configuration (`config.py`) shared seamlessly across analysis tools and app interfaces.
-* **Threshold Analysis (Transform):** Processes daily minimum temperatures into frost  and freeze band analytics (`<=32°F`, `<20°F`, `33-35°F`).
+The underlying PostgreSQL table (`daily_weather_metrics`) is protected with **Row Level Security (RLS)** and structured as follows:
 
-* **Dynamic API Routing:** Seamlessly switches between Open-Meteo's **Forecast API** (for upcoming 7-day outlooks) and the **Historical Weather Archive API** (for multi-year winter analysis).
-* **Categorized Temperature Bands:**
-  * **Light Chill / Frost Warning (33°F  - 35°F ):** Identifies near-freezing conditions requiring row covers or frost cloth.
-  * **Freezing Threshold (<= 32°F ):** Tracks total freeze days affecting sensitive tissues.
-  * **Hard Freeze / Zone 9 Limit (< 20°F ):** Evaluates extreme cold events critical for determining the survival frequency of Zone 9 perennials.
-* **5-Winter Historical Audit:** Evaluates historical winter data blocks (Nov 1 – Mar 31) across the last 5 full seasons to provide an accurate representation of near-future climate trends.
-* **Interactive CLI Interface:** Clean, user-friendly terminal menu for quick city selection and analysis mode switching.
-
----
-
-## 🛠️ Tech Stack & Dependencies
-
-* **Language:** Python 3
-* **Libraries:** `requests`
-* **Data Provider:** [Open-Meteo API](https://open-meteo.com/) (Forecast & Archive Endpoints)
+| Column Name | Data Type | Constraint / Logic |
+| :--- | :--- | :--- |
+| `id` | `BIGINT` | Primary Key (Auto-incrementing) |
+| `city_name` | `VARCHAR` | Unique composite constraint with `reading_date` |
+| `latitude` | `FLOAT` | Geographic coordinate |
+| `longitude` | `FLOAT` | Geographic coordinate |
+| `reading_date` | `DATE` | Unique composite constraint with `city_name` |
+| `min_temp_f` | `FLOAT` | Recorded daily low temperature |
+| `is_light_chill` | `BOOLEAN` | Calculated column (`min_temp_f <= 45.0`) |
+| `is_freezing` | `BOOLEAN` | Calculated column (`min_temp_f <= 32.0`) |
+| `is_hard_freeze` | `BOOLEAN` | Calculated column (`min_temp_f <= 28.0`) |
+| `created_at` | `TIMESTAMPTZ` | Default `NOW()` timestamp |
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
+* Python 3.9+
+* Supabase Account & PostgreSQL Project
+* `pip install supabase python-dotenv`
 
-Ensure you have Python 3 installed along with the `requests` library:
-
-```bash
-pip install requests
-```
-
-## 🚀 How to Run
-1. Clone the repository:
-
-```bash
-git clone https://github.com/Ben-Trute-Python/texas-weather-analyzer.git
-```
-
-2. Run the pipeline: 
-```bash
+### Environment Setup
+Create a `.env` file in the project root:
+```text
+SUPABASE_URL=[https://your-supabase-project-id.supabase.co](https://your-supabase-project-id.supabase.co)
+SUPABASE_KEY=your-supabase-anon-key
+Execution Commands
+​Run the backend cloud ETL pipeline:
 python texas_weather_analyzer.py
-```
-
-3. Inspect stored database records:
-```bash
-python -c "import database; print(database.get_all_readings()[:5])"
-```
+Run the interactive CLI tool:
+python texas_weather_analyzer_v1_legacy.py
