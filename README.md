@@ -6,7 +6,7 @@ A hybrid Python data architecture featuring an **interactive command-line interf
 
 ## 🛠️ System Architecture
 
-[ Open-Meteo API ]
+```[ Open-Meteo API ]
        │
        ├─► (On-Demand Queries) ──► Interactive CLI Tool (texas_weather_analyzer_v1_legacy.py)
        │
@@ -17,6 +17,7 @@ A hybrid Python data architecture featuring an **interactive command-line interf
                                            │
                                            ▼
                                  Supabase PostgreSQL Database (daily_weather_metrics)
+```
 
 ## 🔑 Key Components
 
@@ -29,8 +30,7 @@ A hybrid Python data architecture featuring an **interactive command-line interf
 ### 2. Interactive Analysis CLI (`texas_weather_analyzer_v1_legacy.py`)
 * **On-Demand Comparisons:** Allows users to pick specific Texas cities and query real-time or historical forecast data.
 * **Threshold Flagging:** Detects frost and freeze conditions instantly for agricultural or infrastructure planning.
- This is an end-to-end Python data pipeline that fetches real-time and hi
-  Designed specifically for horticultural planning, microclimate e
+ This is an enDesigned specifically for horticultural planning, microclimate evaluation, and crop protection analysis.
  
 ---
 
@@ -79,6 +79,7 @@ Create a `.env` file in the project root:
 ```text
 SUPABASE_URL=[https://your-supabase-project-id.supabase.co](https://your-supabase-project-id.supabase.co)
 SUPABASE_KEY=your-supabase-anon-key
+```
 Execution Commands
 ​Run the backend cloud ETL pipeline:
 python texas_weather_analyzer.py
