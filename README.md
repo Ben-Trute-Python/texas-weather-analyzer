@@ -6,7 +6,6 @@ A hybrid Python data architecture featuring an **interactive command-line interf
 
 ## 🛠️ System Architecture
 
-```text
 [ Open-Meteo API ]
        │
        ├─► (On-Demand Queries) ──► Interactive CLI Tool (texas_weather_analyzer_v1_legacy.py)
@@ -18,7 +17,6 @@ A hybrid Python data architecture featuring an **interactive command-line interf
                                            │
                                            ▼
                                  Supabase PostgreSQL Database (daily_weather_metrics)
-
 
 ## 🔑 Key Components
 
