@@ -6,18 +6,19 @@ A hybrid Python data architecture featuring an **interactive command-line interf
 
 ## 🛠️ System Architecture
 
+```text
 [ Open-Meteo API ]
-│
-├─► (On-Demand Queries) ──► Interactive CLI Tool (texas_weather_analyzer_v1_legacy.py)
-│
-└─► (Raw JSON Ingestion) ──► Supabase Storage Landing Zone (raw-weather-landing-zone)
-│
-▼
-Automated Cloud ETL Pipeline (texas_weather_analyzer.py)
-│
-▼
-Supabase PostgreSQL Database (daily_weather_metrics)
----
+       │
+       ├─► (On-Demand Queries) ──► Interactive CLI Tool (texas_weather_analyzer_v1_legacy.py)
+       │
+       └─► (Raw JSON Ingestion) ──► Supabase Storage Landing Zone (raw-weather-landing-zone)
+                                           │
+                                           ▼
+                                 Automated Cloud ETL Pipeline (texas_weather_analyzer.py)
+                                           │
+                                           ▼
+                                 Supabase PostgreSQL Database (daily_weather_metrics)
+
 
 ## 🔑 Key Components
 
@@ -35,15 +36,17 @@ Supabase PostgreSQL Database (daily_weather_metrics)
  
 ---
 
- ## 💡 The Problem & Purpose
+## 💡 The Problem & Purpose
 
- Commercial agricultural calculators and standard weather apps ty
+Commercial agricultural calculators and standard weather apps typically lack customized threshold categorization or long-term automated metric tracking. This application addresses key agricultural operational needs:
 
- 1. **Short-Term Protection:** *Will temperature drop low enough
- 2. **Long-Term Feasibility & Labor Planning:** *If I buy land or
- 3. **Hardiness Threshold Tracking:** *For zone-marginal crops (e
+1. **Short-Term Protection:** *Will temperatures drop low enough tonight to require covering sensitive crops or activating freeze prevention measures?*
 
- This application solves these gaps by providing clear, categorized data.
+2. **Long-Term Feasibility & Labor Planning:** *How many chilling or freezing days occur seasonally when evaluating land acquisitions or orchard site placement?*
+
+3. **Hardiness Threshold Tracking:** *For zone-marginal crops (such as figs, citrus, or nuts), how frequently do temperatures cross light chill, freeze, or hard freeze thresholds?*
+
+This application solves these gaps by providing clear, categorized, and queryable historical metrics.
 
 ---
 
